@@ -1,0 +1,49 @@
+# Import the Active Directory module
+Import-Module ActiveDirectory
+
+# Function to recursively retrieve all members of a group, including nested groups
+function Get-NestedGroupMembers {
+    param(
+        [string]$GroupName
+    )
+
+    $group = Get-ADGroup $GroupName
+    $members = Get-ADGroupMember $group | Where-Object { $_.objectClass -eq "user" }
+
+    foreach ($member in $members) {
+        if ($member.objectClass -eq "user") {
+            $member
+        }
+        elseif ($member.objectClass -eq "group") {
+            Get-NestedGroupMembers -GroupName $member.SamAccountName
+        }
+    }
+}
+
+# Function to get all administrator accounts
+function Get-AdministratorAccounts {
+    # Array to store administrator groups
+    $adminGroups = @("Domain Admins", "Enterprise Admins", "Schema Admins", "Administrators")
+
+    # Custom administrator groups (add more if needed)
+    $customAdminGroups = @("IT Admins", "Server Admins")
+
+    # Combine built-in and custom administrator groups
+    $allAdminGroups = $adminGroups + $customAdminGroups
+
+    # Array to store all administrator accounts
+    $adminMembers = @()
+
+    # Iterate through each administrator group
+    foreach ($group in $allAdminGroups) {
+        # Get all members of the administrator group, including nested groups
+        $members = Get-NestedGroupMembers -GroupName $group
+        $adminMembers += $members
+    }
+
+    # Output the administrator accounts
+    $adminMembers | Select-Object Name, SamAccountName
+}
+
+# Call the function to retrieve administrator accounts
+Get-AdministratorAccounts
